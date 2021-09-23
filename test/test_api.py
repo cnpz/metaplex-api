@@ -6,9 +6,10 @@ import time
 import base58
 from solana.account import Account
 from solana.rpc.api import Client
-from metaplex.metadata import get_metadata
+from metaplex.metaplex.metadata import get_metadata
 from cryptography.fernet import Fernet
-from api.metaplex_api import MetaplexAPI
+from metaplex.api.metaplex_api import MetaplexAPI
+
 
 def await_full_confirmation(client, txn, max_timeout=60):
     if txn is None:
@@ -19,11 +20,12 @@ def await_full_confirmation(client, txn, max_timeout=60):
         time.sleep(sleep_time)
         elapsed += sleep_time
         resp = client.get_confirmed_transaction(txn)
-        while 'result' not in resp:
+        while "result" not in resp:
             resp = client.get_confirmed_transaction(txn)
         if resp["result"]:
             print(f"Took {elapsed} seconds to confirm transaction {txn}")
             break
+
 
 def test(api_endpoint="https://api.devnet.solana.com/"):
     account = Account()
@@ -35,14 +37,14 @@ def test(api_endpoint="https://api.devnet.solana.com/"):
     api = MetaplexAPI(cfg)
     client = Client(api_endpoint)
     resp = {}
-    while 'result' not in resp:
+    while "result" not in resp:
         resp = client.request_airdrop(account.public_key(), int(1e9))
     print("Request Airdrop:", resp)
-    txn = resp['result']
+    txn = resp["result"]
     await_full_confirmation(client, txn)
     letters = string.ascii_uppercase
-    name = ''.join([random.choice(letters) for i in range(32)])
-    symbol = ''.join([random.choice(letters) for i in range(10)])
+    name = "".join([random.choice(letters) for i in range(32)])
+    symbol = "".join([random.choice(letters) for i in range(10)])
     print("Name:", name)
     print("Symbol:", symbol)
     deploy_response = json.loads(api.deploy(api_endpoint, name, symbol))
@@ -51,42 +53,54 @@ def test(api_endpoint="https://api.devnet.solana.com/"):
     contract = deploy_response.get("contract")
     print(get_metadata(client, contract))
     wallet = json.loads(api.wallet())
-    address1 = wallet.get('address')
-    encrypted_pk1 = api.cipher.encrypt(bytes(wallet.get('private_key')))
+    address1 = wallet.get("address")
+    encrypted_pk1 = api.cipher.encrypt(bytes(wallet.get("private_key")))
     topup_response = json.loads(api.topup(api_endpoint, address1))
     print(f"Topup {address1}:", topup_response)
     assert topup_response["status"] == 200
-    mint_to_response = json.loads(api.mint(api_endpoint, contract, address1, "https://arweave.net/1eH7bZS-6HZH4YOc8T_tGp2Rq25dlhclXJkoa6U55mM/"))
+    mint_to_response = json.loads(
+        api.mint(
+            api_endpoint,
+            contract,
+            address1,
+            "https://arweave.net/1eH7bZS-6HZH4YOc8T_tGp2Rq25dlhclXJkoa6U55mM/",
+        )
+    )
     print("Mint:", mint_to_response)
     # await_confirmation(client, mint_to_response['tx'])
     assert mint_to_response["status"] == 200
     print(get_metadata(client, contract))
     wallet2 = json.loads(api.wallet())
-    address2 = wallet2.get('address')
-    encrypted_pk2 = api.cipher.encrypt(bytes(wallet2.get('private_key')))
+    address2 = wallet2.get("address")
+    encrypted_pk2 = api.cipher.encrypt(bytes(wallet2.get("private_key")))
     print(client.request_airdrop(api.public_key, int(1e10)))
     topup_response2 = json.loads(api.topup(api_endpoint, address2))
     print(f"Topup {address2}:", topup_response2)
     # await_confirmation(client, topup_response2['tx'])
     assert topup_response2["status"] == 200
-    send_response = json.loads(api.send(api_endpoint, contract, address1, address2, encrypted_pk1))
+    send_response = json.loads(
+        api.send(api_endpoint, contract, address1, address2, encrypted_pk1)
+    )
     assert send_response["status"] == 200
     # await_confirmation(client, send_response['tx'])
-    burn_response = json.loads(api.burn(api_endpoint, contract, address2, encrypted_pk2))
+    burn_response = json.loads(
+        api.burn(api_endpoint, contract, address2, encrypted_pk2)
+    )
     print("Burn:", burn_response)
     # await_confirmation(client, burn_response['tx'])
     assert burn_response["status"] == 200
     print("Success!")
 
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--network", default=None)
     args = ap.parse_args()
-    if args.network == None or args.network == 'devnet':
+    if args.network is None or args.network == "devnet":
         test()
-    elif args.network == 'testnet':
+    elif args.network == "testnet":
         test(api_endpoint="https://api.testnet.solana.com/")
-    elif args.network == 'mainnet':
+    elif args.network == "mainnet":
         test(api_endpoint="https://api.mainnet-beta.solana.com/")
     else:
         print("Invalid network argument supplied")

@@ -1,25 +1,42 @@
 import time
-from solana.account import Account 
+from solana.account import Account
 from solana.rpc.api import Client
-from solana.rpc.types import TxOpts 
+from solana.rpc.types import TxOpts
 
-def execute(api_endpoint, tx, signers, max_retries=3, skip_confirmation=True, max_timeout=60, target=20, finalized=True):
+
+def execute(
+    api_endpoint,
+    tx,
+    signers,
+    max_retries=3,
+    skip_confirmation=True,
+    max_timeout=60,
+    target=20,
+    finalized=True,
+):
     client = Client(api_endpoint)
     signers = list(map(Account, set(map(lambda s: s.secret_key(), signers))))
     for attempt in range(max_retries):
         try:
-            result = client.send_transaction(tx, *signers, opts=TxOpts(skip_preflight=True))
+            result = client.send_transaction(
+                tx, *signers, opts=TxOpts(skip_preflight=True)
+            )
             print(result)
             signatures = [x.signature for x in tx.signatures]
             if not skip_confirmation:
-                await_confirmation(client, signatures, max_timeout, target, finalized)
+                await_confirmation(
+                    client, signatures, max_timeout, target, finalized
+                )
             return result
         except Exception as e:
             print(f"Failed attempt {attempt}: {e}")
             continue
     raise e
 
-def await_confirmation(client, signatures, max_timeout=60, target=20, finalized=True):
+
+def await_confirmation(
+    client, signatures, max_timeout=60, target=20, finalized=True
+):
     elapsed = 0
     while elapsed < max_timeout:
         sleep_time = 1
@@ -28,7 +45,9 @@ def await_confirmation(client, signatures, max_timeout=60, target=20, finalized=
         resp = client.get_signature_statuses(signatures)
         if resp["result"]["value"][0] is not None:
             confirmations = resp["result"]["value"][0]["confirmations"]
-            is_finalized = resp["result"]["value"][0]["confirmationStatus"] == "finalized"
+            is_finalized = (
+                resp["result"]["value"][0]["confirmationStatus"] == "finalized"
+            )
         else:
             continue
         if not finalized:

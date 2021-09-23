@@ -1,12 +1,12 @@
 import json
 from cryptography.fernet import Fernet
 import base58
-from solana.account import Account 
-from metaplex.transactions import deploy, topup, mint, send, burn
-from utils.execution_engine import execute
+from solana.account import Account
+from metaplex.metaplex.transactions import deploy, topup, mint, send, burn
+from metaplex.utils.execution_engine import execute
 
-class MetaplexAPI():
 
+class MetaplexAPI:
     def __init__(self, cfg):
         self.private_key = list(base58.b58decode(cfg["PRIVATE_KEY"]))[:32]
         self.public_key = cfg["PUBLIC_KEY"]
@@ -14,24 +14,33 @@ class MetaplexAPI():
         self.cipher = Fernet(cfg["DECRYPTION_KEY"])
 
     def wallet(self):
-        """ Generate a wallet and return the address and private key. """
+        """Generate a wallet and return the address and private key."""
         account = Account()
-        pub_key = account.public_key() 
+        pub_key = account.public_key()
         private_key = list(account.secret_key()[:32])
         return json.dumps(
-            {
-                'address': str(pub_key),
-                'private_key': private_key
-            }
+            {"address": str(pub_key), "private_key": private_key}
         )
 
-    def deploy(self, api_endpoint, name, symbol, max_retries=3, skip_confirmation=False, max_timeout=60, target=20, finalized=True):
+    def deploy(
+        self,
+        api_endpoint,
+        name,
+        symbol,
+        max_retries=3,
+        skip_confirmation=False,
+        max_timeout=60,
+        target=20,
+        finalized=True,
+    ):
         """
         Deploy a contract to the blockchain (on network that support contracts). Takes the network ID and contract name, plus initialisers of name and symbol. Process may vary significantly between blockchains.
         Returns status code of success or fail, the contract address, and the native transaction data.
         """
         try:
-            tx, signers, contract = deploy(api_endpoint, self.account, name, symbol)
+            tx, signers, contract = deploy(
+                api_endpoint, self.account, name, symbol
+            )
             print(contract)
             resp = execute(
                 api_endpoint,
@@ -49,7 +58,17 @@ class MetaplexAPI():
         except:
             return json.dumps({"status": 400})
 
-    def topup(self, api_endpoint, to, amount=None, max_retries=3, skip_confirmation=False, max_timeout=60, target=20, finalized=True):
+    def topup(
+        self,
+        api_endpoint,
+        to,
+        amount=None,
+        max_retries=3,
+        skip_confirmation=False,
+        max_timeout=60,
+        target=20,
+        finalized=True,
+    ):
         """
         Send a small amount of native currency to the specified wallet to handle gas fees. Return a status flag of success or fail and the native transaction data.
         """
@@ -70,11 +89,30 @@ class MetaplexAPI():
         except:
             return json.dumps({"status": 400})
 
-    def mint(self, api_endpoint, contract_key, dest_key, link, max_retries=3, skip_confirmation=False, max_timeout=60, target=20, finalized=True, supply=1 ):
+    def mint(
+        self,
+        api_endpoint,
+        contract_key,
+        dest_key,
+        link,
+        max_retries=3,
+        skip_confirmation=False,
+        max_timeout=60,
+        target=20,
+        finalized=True,
+        supply=1,
+    ):
         """
         Mints an NFT to an account, updates the metadata and creates a master edition
         """
-        tx, signers = mint(api_endpoint, self.account, contract_key, dest_key, link, supply=supply)
+        tx, signers = mint(
+            api_endpoint,
+            self.account,
+            contract_key,
+            dest_key,
+            link,
+            supply=supply,
+        )
         resp = execute(
             api_endpoint,
             tx,
@@ -90,15 +128,34 @@ class MetaplexAPI():
         # except:
         #     return json.dumps({"status": 400})
 
-    def send(self, api_endpoint, contract_key, sender_key, dest_key, encrypted_private_key, max_retries=3, skip_confirmation=False, max_timeout=60, target=20, finalized=True):
+    def send(
+        self,
+        api_endpoint,
+        contract_key,
+        sender_key,
+        dest_key,
+        encrypted_private_key,
+        max_retries=3,
+        skip_confirmation=False,
+        max_timeout=60,
+        target=20,
+        finalized=True,
+    ):
         """
         Transfer a token on a given network and contract from the sender to the recipient.
         May require a private key, if so this will be provided encrypted using Fernet: https://cryptography.io/en/latest/fernet/
-        Return a status flag of success or fail and the native transaction data. 
+        Return a status flag of success or fail and the native transaction data.
         """
         try:
             private_key = list(self.cipher.decrypt(encrypted_private_key))
-            tx, signers = send(api_endpoint, self.account, contract_key, sender_key, dest_key, private_key)
+            tx, signers = send(
+                api_endpoint,
+                self.account,
+                contract_key,
+                sender_key,
+                dest_key,
+                private_key,
+            )
             resp = execute(
                 api_endpoint,
                 tx,
@@ -114,7 +171,18 @@ class MetaplexAPI():
         except:
             return json.dumps({"status": 400})
 
-    def burn(self, api_endpoint, contract_key, owner_key, encrypted_private_key, max_retries=3, skip_confirmation=False, max_timeout=60, target=20, finalized=True):
+    def burn(
+        self,
+        api_endpoint,
+        contract_key,
+        owner_key,
+        encrypted_private_key,
+        max_retries=3,
+        skip_confirmation=False,
+        max_timeout=60,
+        target=20,
+        finalized=True,
+    ):
         """
         Burn a token, permanently removing it from the blockchain.
         May require a private key, if so this will be provided encrypted using Fernet: https://cryptography.io/en/latest/fernet/
@@ -122,7 +190,9 @@ class MetaplexAPI():
         """
         try:
             private_key = list(self.cipher.decrypt(encrypted_private_key))
-            tx, signers = burn(api_endpoint, contract_key, owner_key, private_key)
+            tx, signers = burn(
+                api_endpoint, contract_key, owner_key, private_key
+            )
             resp = execute(
                 api_endpoint,
                 tx,
